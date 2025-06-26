@@ -1,0 +1,37 @@
+# === PYTHON / FASTAPI ===
+__pycache__/
+*.py[cod]
+*.env
+*.sqlite3
+*.db
+.env
+venv/
+env/
+.idea/
+.DS_Store
+
+# === FASTAPI IDE / OS Files ===
+*.log
+*.bak
+*.swp
+
+# === REACT ===
+node_modules/
+build/
+dist/
+.env.local
+.env.development
+.env.production
+.env.test
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === MAC OS ===
+.DS_Store
+
+# === VS CODE ===
+.vscode/
+
+# === MISC ===
+*.orig
