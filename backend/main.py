@@ -1,32 +1,58 @@
-from fastapi import FastAPI
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
-from dotenv import load_dotenv
-import os
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import logging
 
-# Load .env file from the project root directory
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+from .app.database import connect_to_mongo, close_mongo_connection
+from .app.routes.question import router
 
-# Get MongoDB credentials from environment variables
-username = os.getenv("MONGO_USERNAME")
-password = os.getenv("MONGO_PASSWORD")
-db_name = os.getenv("MONGO_DB_NAME")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Raise an error if any env variable is missing
-if not all([username, password, db_name]):
-    raise EnvironmentError("Missing one or more MongoDB credentials in .env file")
 
-# Construct MongoDB URI
-uri = f"mongodb+srv://{username}:{password}@{db_name}.ib5vj55.mongodb.net/?retryWrites=true&w=majority&appName={db_name}"
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle application startup and shutdown events."""
+    # Startup
+    logger.info("Starting up application...")
+    await connect_to_mongo()
+    yield
+    # Shutdown
+    logger.info("Shutting down application...")
+    await close_mongo_connection()
 
-# Initialize FastAPI app
-app = FastAPI()
 
-# Connect to MongoDB
-client = MongoClient(uri, server_api=ServerApi("1"))
+app = FastAPI(
+    title="Crewmind.ai Assistant API",
+    description="A simple AI assistant backend with MongoDB storage",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
-try:
-    client.admin.command("ping")
-    print("✅ Connected to MongoDB!")
-except Exception as e:
-    print("❌ Failed to connect to MongoDB:", e)
+# CORS settings
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],  # React dev server
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(router, prefix="/api/v1", tags=["questions"])
+
+
+@app.get("/")
+async def root():
+    """Health check endpoint."""
+    return {"message": "Crewmind.ai Assistant API is running!", "status": "healthy"}
+
+
+@app.get("/health")
+async def health_check():
+    """Detailed health check endpoint."""
+    return {"status": "healthy", "service": "crewmind-ai-backend", "version": "1.0.0"}
