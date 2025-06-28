@@ -1,5 +1,16 @@
 ---
 
+## ✅ Prerequisites
+
+- **Python 3.8+** (for the backend)
+- **Node.js 16+ and npm** (for the frontend)
+- **MongoDB Atlas account** (or your own MongoDB URI)
+- **Git** (to clone the repository)
+
+---
+
+## 🚀 Installation & Startup Instructions
+
 ## 🚀 Installation & Startup Instructions
 
 ### 1. Clone the repository
