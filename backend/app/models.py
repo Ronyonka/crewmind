@@ -42,7 +42,6 @@ class QuestionResponse(BaseModel):
 class StoredQuestion(BaseModel):
     """Model for questions stored in database."""
 
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     question: str = Field(..., description="The user's question")
     response: str = Field(..., description="The assistant's response")
     timestamp: datetime = Field(
@@ -50,9 +49,8 @@ class StoredQuestion(BaseModel):
     )
 
     class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+        json_encoders = {datetime: str}  # Handle datetime serialization
+        extra = "allow"  # Allow extra fields (like _id) without validation
 
 
 class ConversationHistory(BaseModel):

@@ -21,26 +21,21 @@ class QuestionService:
             db = await get_database()
             collection = db[self.collection_name]
 
-            # Generate response (placeholder for now)
-            response = self._generate_response(question_request.question)
-
-            # Create document to store (without _id)
+            # Create document
             question_doc = {
                 "question": question_request.question,
-                "response": response,
+                "response": self._generate_response(question_request.question),
                 "timestamp": datetime.utcnow(),
             }
 
             # Insert into database
             result = await collection.insert_one(question_doc)
 
-            # Return the stored question with generated ID
-            return StoredQuestion(
-                _id=result.inserted_id,
-                question=question_request.question,
-                response=response,
-                timestamp=question_doc["timestamp"],
-            )
+            # Add the inserted_id to the document
+            question_doc["_id"] = str(result.inserted_id)
+
+            # Return the stored question (unpack only once)
+            return StoredQuestion(**question_doc)
 
         except Exception as e:
             logger.error(f"Error storing question: {e}")
@@ -54,20 +49,19 @@ class QuestionService:
 
             # Calculate skip value for pagination
             skip = (page - 1) * per_page
-
-            # Get total count
             total_count = await collection.count_documents({})
 
-            # Get questions with pagination, sorted by timestamp (newest first)
+            # Get questions with pagination
             cursor = (
                 collection.find({}).sort("timestamp", -1).skip(skip).limit(per_page)
             )
             questions = await cursor.to_list(length=per_page)
 
-            # Convert to StoredQuestion models
-            stored_questions = [StoredQuestion(**question) for question in questions]
-
-            logger.info(f"Retrieved {len(stored_questions)} questions for page {page}")
+            # Convert MongoDB documents to dict format, handling ObjectId
+            stored_questions = []
+            for q in questions:
+                q["_id"] = str(q["_id"])  # Convert ObjectId to string
+                stored_questions.append(StoredQuestion(**q))
 
             return {
                 "questions": stored_questions,
