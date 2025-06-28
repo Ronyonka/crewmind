@@ -1,39 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 function App() {
   const [question, setQuestion] = useState("");
-  const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [history]);
 
   const handleSend = async () => {
     if (!question.trim()) return;
-
     setLoading(true);
     setError("");
-
     try {
       const res = await fetch("http://localhost:8000/api/v1/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
-
-      if (!res.ok) {
-        throw new Error("Failed to get response");
-      }
-
-      const data = await res.json();
-      setResponse(data.response);
-      setQuestion(""); // Clear input after sending
-
-      // Refresh history if it's currently shown
-      if (showHistory) {
-        fetchHistory();
-      }
+      if (!res.ok) throw new Error("Failed to get response");
+      setQuestion("");
+      fetchHistory();
     } catch (err) {
       setError("Failed to send question. Make sure the backend is running.");
       console.error("Error:", err);
@@ -46,25 +41,16 @@ function App() {
     setHistoryLoading(true);
     try {
       const res = await fetch(
-        "http://localhost:8000/api/v1/history?page=1&per_page=10"
+        "http://localhost:8000/api/v1/history?page=1&per_page=100"
       );
-      if (!res.ok) {
-        throw new Error("Failed to fetch history");
-      }
+      if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
       setHistory(data.questions || []);
     } catch (err) {
-      console.error("Error fetching history:", err);
       setError("Failed to load conversation history.");
+      console.error("Error fetching history:", err);
     } finally {
       setHistoryLoading(false);
-    }
-  };
-
-  const toggleHistory = () => {
-    setShowHistory(!showHistory);
-    if (!showHistory) {
-      fetchHistory();
     }
   };
 
@@ -80,164 +66,108 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="main-container">
+      <div className="chatbot-wrapper">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            🧪 Crewmind Assistant
-          </h1>
-          <p className="text-gray-600">
+        <div className="chatbot-header">
+          <div className="chatbot-title">🧪 Crewmind Assistant</div>
+          <div className="chatbot-subtitle">
             Ask me anything and I'll help you out!
-          </p>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-1 flex">
-            <button
-              onClick={() => setShowHistory(false)}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                !showHistory
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Ask Question
-            </button>
-            <button
-              onClick={toggleHistory}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                showHistory
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              History ({history.length})
-            </button>
           </div>
         </div>
 
-        {!showHistory ? (
-          /* Ask Question View */
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            {/* Input Section */}
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="question"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Your Question
-                </label>
-                <textarea
-                  id="question"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask something..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                />
-                <div className="text-right text-sm text-gray-500 mt-1">
-                  {question.length}/1000 characters
-                </div>
-              </div>
-
-              <button
-                onClick={handleSend}
-                disabled={loading || !question.trim() || question.length > 1000}
-                className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
-                  loading || !question.trim() || question.length > 1000
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                }`}
-              >
-                {loading ? "Sending..." : "Send"}
-              </button>
+        {/* Chat History */}
+        <div className="chat-area custom-scrollbar">
+          {historyLoading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p style={{ marginTop: "10px" }}>Loading history...</p>
             </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
-            )}
-
-            {/* Response Section */}
-            {response && (
-              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-                <h3 className="text-lg font-semibold text-green-800 mb-2">
-                  Response:
-                </h3>
-                <p className="text-green-700">{response}</p>
-              </div>
-            )}
-
-            {/* Instructions */}
-            <div className="text-center mt-6 text-gray-500 text-sm">
-              Press Enter to send • Shift+Enter for new line
+          ) : history.length === 0 ? (
+            <div className="empty-state">
+              No conversation history yet. <br />
+              <span className="empty-state-highlight">
+                Ask your first question!
+              </span>
             </div>
-          </div>
-        ) : (
-          /* History View */
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Conversation History
-              </h2>
-              <button
-                onClick={fetchHistory}
-                disabled={historyLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
-              >
-                {historyLoading ? "Loading..." : "Refresh"}
-              </button>
-            </div>
-
-            {historyLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-500 mt-2">Loading history...</p>
-              </div>
-            ) : history.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">
-                  No conversation history yet. Ask your first question!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {history.map((item, index) => (
-                  <div
-                    key={index}
-                    className="border border-gray-200 rounded-lg p-4"
-                  >
-                    <div className="mb-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-gray-900">Question:</h4>
-                        <span className="text-xs text-gray-500">
+          ) : (
+            <div className="chat-messages">
+              {history
+                .slice()
+                .reverse()
+                .map((item, idx) => (
+                  <div key={idx}>
+                    {/* User message */}
+                    <div className="message-container user">
+                      <div className="message-bubble user">
+                        <div className="message-content">
+                          <span className="message-label user">You:</span>
+                          {item.question}
+                        </div>
+                        <div className="message-timestamp user">
                           {formatTimestamp(item.timestamp)}
-                        </span>
+                        </div>
                       </div>
-                      <p className="text-gray-700 bg-gray-50 p-3 rounded-md">
-                        {item.question}
-                      </p>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">
-                        Response:
-                      </h4>
-                      <p className="text-gray-700 bg-blue-50 p-3 rounded-md">
-                        {item.response}
-                      </p>
+
+                    {/* Assistant response */}
+                    <div className="message-container assistant">
+                      <div className="message-bubble assistant">
+                        <div className="message-content">
+                          <span className="message-label assistant">
+                            Assistant:
+                          </span>
+                          {item.response}
+                        </div>
+                        <div className="message-timestamp assistant">
+                          {formatTimestamp(item.timestamp)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
+              <div ref={chatEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="input-area">
+          <form
+            className="input-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+          >
+            <div className="input-field">
+              <textarea
+                id="question"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                rows={1}
+                className="input-textarea"
+                disabled={loading}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading || !question.trim() || question.length > 1000}
+              className="send-button"
+            >
+              {loading ? "Sending..." : "Send"}
+            </button>
+          </form>
+
+          <div className="input-footer">
+            <div className="character-count">
+              {question.length}/1000 characters
+            </div>
+            {error && <div className="error-message">{error}</div>}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
