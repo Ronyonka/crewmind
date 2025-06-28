@@ -11,8 +11,6 @@
 
 ## 🚀 Installation & Startup Instructions
 
-## 🚀 Installation & Startup Instructions
-
 ### 1. Clone the repository
 
 ```bash
