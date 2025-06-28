@@ -66,7 +66,7 @@ cp .env.example .env
 2. **Start the React development server:**
 
    ```bash
-   npm run dev
+   npm start
    ```
 
    > The app will be available at [http://localhost:3000](http://localhost:3000)
